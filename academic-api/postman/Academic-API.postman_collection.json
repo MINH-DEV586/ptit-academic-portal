@@ -1,0 +1,119 @@
+{
+  "info": {
+    "name": "Academic API",
+    "description": "Bộ test cho Academic API (Node.js + Express). Chạy server trước: npm start (mặc định cổng 3001).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "studentId", "value": "SV2022001" }
+  ],
+  "item": [
+    {
+      "name": "Health check",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/health" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+        "pm.test('status ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"
+      ] } }]
+    },
+    {
+      "name": "1. Danh sách sinh viên",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/students?page=1&limit=5",
+          "host": ["{{baseUrl}}"], "path": ["api", "students"],
+          "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "5" }]
+        }
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const b = pm.response.json();",
+        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+        "pm.test('data là mảng tối đa 5 phần tử', () => { pm.expect(b.data).to.be.an('array'); pm.expect(b.data.length).to.be.at.most(5); });",
+        "pm.test('có pagination', () => pm.expect(b.pagination).to.have.all.keys('page','limit','total','totalPages'));"
+      ] } }]
+    },
+    {
+      "name": "1b. Tìm kiếm sinh viên theo tên",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/students?q=Trần",
+          "host": ["{{baseUrl}}"], "path": ["api", "students"],
+          "query": [{ "key": "q", "value": "Trần" }]
+        }
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+        "pm.test('Kết quả chứa từ khoá', () => pm.response.json().data.forEach(s => pm.expect(s.fullName + s.studentId + s.email).to.include('Trần')));"
+      ] } }]
+    },
+    {
+      "name": "1c. Lọc sinh viên theo lớp",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/students?classId=1",
+          "host": ["{{baseUrl}}"], "path": ["api", "students"],
+          "query": [{ "key": "classId", "value": "1" }]
+        }
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+        "pm.test('Tất cả thuộc lớp id 1', () => pm.response.json().data.forEach(s => pm.expect(s.class.id).to.eql(1)));"
+      ] } }]
+    },
+    {
+      "name": "2. Thông tin sinh viên theo mã",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/students/{{studentId}}" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const d = pm.response.json().data;",
+        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+        "pm.test('Đúng mã sinh viên', () => pm.expect(d.studentId).to.eql(pm.variables.get('studentId')));",
+        "pm.test('Có lớp, ngành, khoa', () => { pm.expect(d.class.name).to.be.a('string'); pm.expect(d.major.name).to.be.a('string'); pm.expect(d.faculty.name).to.be.a('string'); });"
+      ] } }]
+    },
+    {
+      "name": "3. Thông tin học tập (điểm, GPA)",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/students/{{studentId}}/academic" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "const d = pm.response.json().data;",
+        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+        "pm.test('Có summary và results', () => { pm.expect(d.summary).to.include.keys('totalCredits','gpa10','gpa4'); pm.expect(d.results).to.be.an('array'); });",
+        "pm.test('GPA hệ 4 trong khoảng 0-4', () => pm.expect(d.summary.gpa4).to.be.within(0, 4));"
+      ] } }]
+    },
+    {
+      "name": "Lỗi: mã sinh viên sai định dạng (400)",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/students/abc" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status 400', () => pm.response.to.have.status(400));",
+        "pm.test('Mã lỗi INVALID_STUDENT_ID', () => pm.expect(pm.response.json().error.code).to.eql('INVALID_STUDENT_ID'));"
+      ] } }]
+    },
+    {
+      "name": "Lỗi: không tìm thấy sinh viên (404)",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/students/SV9999999" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status 404', () => pm.response.to.have.status(404));",
+        "pm.test('Mã lỗi STUDENT_NOT_FOUND', () => pm.expect(pm.response.json().error.code).to.eql('STUDENT_NOT_FOUND'));"
+      ] } }]
+    },
+    {
+      "name": "Lỗi: tham số phân trang sai (400)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/students?page=0&limit=500",
+          "host": ["{{baseUrl}}"], "path": ["api", "students"],
+          "query": [{ "key": "page", "value": "0" }, { "key": "limit", "value": "500" }]
+        }
+      },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('Status 400', () => pm.response.to.have.status(400));",
+        "pm.test('Mã lỗi INVALID_QUERY', () => pm.expect(pm.response.json().error.code).to.eql('INVALID_QUERY'));"
+      ] } }]
+    }
+  ]
+}
