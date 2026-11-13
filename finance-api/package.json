@@ -1,0 +1,15 @@
+{
+  "name": "finance-api",
+  "version": "1.0.0",
+  "description": "Finance API -  Student Information Integration Portal – SIIP",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "seed": "node src/scripts/seed.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
